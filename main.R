@@ -38,3 +38,5 @@ hiv_fit_new <- fmcfust(2, hivdata)
 hed_fit_new <- fmcfust(2, hedenfalk$z)
 col_fit_new <- fmcfust(2, Colon$z)
 
+
+
