@@ -45,8 +45,7 @@ hiv_fit_new <- fmcfust(1, hivdata[1:100])
 hed_fit_new <- fmcfust(2, hedenfalk$z)
 col_fit_new <- fmcfust(2, Colon$z)
 
-bins=40
-k=1000
+
 
 normal_densities<-function(fit, k){
   fit$G<-length(fit$lambda)

@@ -8,9 +8,6 @@ library(cepp)
 source("fmcfust.R")
 source("fmmst.R")
 
-#source("./EMMIXcskew/R/fmmst.R")
-#source("./EMMIXcskew/R/random.R")
-
 
 data("hedenfalk")
 hedenfalk$z<-qnorm(1-hedenfalk$p)
