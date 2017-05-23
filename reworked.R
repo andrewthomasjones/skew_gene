@@ -5,8 +5,10 @@ library(mnormt)
 library(locfdr)
 library(qvalue)
 library(cepp)
-source("fmcfust.R")
-source("fmmst.R")
+# source("fmcfust.R")
+# source("fmmst.R")
+
+source("util.R")
 
 #source("./EMMIXcskew/R/fmmst.R")
 #source("./EMMIXcskew/R/random.R")
