@@ -23,8 +23,10 @@ data("hivdata")# already pval
 
 
 x<-fmcfust2((hedenfalk$z),1, verbose=T, emp=F)
-y<-fmcfust2((hivdata),3, verbose=T, emp=F)
-z<-fmcfust2(Colon$z,1, verbose=T, emp=F, itmax=20)
+x2<-fmcfust2((hedenfalk$z),1, verbose=T, emp=T)
+
+y<-fmcfust2((hivdata),3, verbose=T, emp=T)
+z<-fmcfust2(Colon$z,1, verbose=T, emp=T, itmax=20)
 
 heden<-namer(x)
 log(length(hed_fit_norm$x))*3-2*hed_fit_norm$loglik

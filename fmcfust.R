@@ -130,7 +130,11 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
               M3 <- M3 + TAU[i,j]*E3[[i]][[j]]       
               M4 <- M4 + TAU[i,j]*E4[[i]][[j]]        
             }
-            MU[[i]] <- 0
+            if(emp==F){
+              MU[[i]] <- 0
+            }else{
+              MU[[i]] <- (M1 - DD%*%M3) / M2
+            }
             for(j in 1:n) {
               M5 <- M5 + TAU[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%t(E3[[i]][[j]])                    
               M6 <- M6 + TAU[i,j]*E2[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%(Y[j,]-matrix(MU[[i]],1)) 
@@ -138,7 +142,10 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
             
             DD <- as.matrix(0)
             Den <- sumTAU[i]
-            SIGMA[[i]] <- 1
+            if(emp==F){
+              SIGMA[[i]] <- 1
+            }
+            
             DOF[i] <- 100
             
           }
