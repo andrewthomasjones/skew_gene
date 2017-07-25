@@ -29,14 +29,14 @@ plot_normal_densities<-function(fit, data, k, bins,name){
 
 skew_densities<-function(fit,data, k){
   G<-length(fit$pro)
-  y<-array(NA, c(k,G+2))
+  y<-array(NA, c(k,G+1))
   xseq<-seq(min(data), max(data), length.out=k)
   y[,1]<-xseq
   y[,2]<-dnorm(y[,1], mean=fit$mu[[1]], sd=fit$sigma[[1]])*fit$pro[1]
-  for(i in 3:(G+2)){
-    y[,i]<-fit$pro[i-2]*dcfust(dat=as.matrix(xseq,nrow=1), mu=as.vector(fit$mu[[i-2]]), sigma=fit$sigma[[i-2]], delta=fit$delta[[i-2]], dof=fit$dof[i-2])
+  for(i in 3:(G+1)){
+    y[,i]<-fit$pro[i-1]*dcfust(dat=as.matrix(xseq,nrow=1), mu=as.vector(fit$mu[[i-1]]), sigma=fit$sigma[[i-1]], delta=fit$delta[[i-1]], dof=fit$dof[i-1])
   }
-  colnames(y)<-c("x", "norm", paste0('y', seq(1:G)))
+  colnames(y)<-c("x", paste0('y', seq(1:G)))
   return(y)
 }
 
