@@ -23,9 +23,9 @@ Colon$z<-qnorm(1-Colon$p)
 
 data("hivdata")# already pval
 
-x<-fmcfust((hedenfalk$z),1)
-y<-fmcfust((hivdata),3)
-z<-fmcfust(Colon$z,1)
+x<-fmcfust((hedenfalk$z),zeta=1, emp=T)
+y<-fmcfust((hivdata),zeta=3,emp=T)
+z<-fmcfust(Colon$z,zeta=1, emp=T)
 
 x2<-fmcfust((hedenfalk$z),1)
 y2<-fmcfust((hivdata),3)
