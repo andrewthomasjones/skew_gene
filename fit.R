@@ -1,19 +1,211 @@
-fmcfust<-function(Y, zeta=1, emp){
+fmcfust<-function(Y, zeta=1, emp=F){
   
   g<-2
   Y<-as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
   q<-1
-  itmax <- 10   #do not allow more than 1000 iterations (too much)
+  itmax <- 1000   #do not allow more than 1000 iterations (too much)
   if(n <= 20*g) stop("sample size is too small!")      
   ndelta<-4
   
   initial <- init(g, t(Y))
-  fit<-fmmstt(g, p, n, Y, initial)
+  initial$pro<-pi_0(Y,zeta)
+  fit<-fmmstt_new(g, p, n, Y, initial, emp, itmax=itmax)
   return(fit) 
   
 }
+
+
+
+fmmstt_new <- function(g=1, p=1, n=1, Y, initial=NULL, emp=FALSE, known=NULL, nkmeans=20, itmax=100, eps=1e-6, debug=T, fulldebug=F) {
+  N <- n
+  MU <- initial$MU
+  SIGMA <- initial$SIGMA
+  DELTA <- initial$DELTA
+  PI <- initial$PI
+  DOF <- initial$DOF
+  fflag <- initial$fflag   
+
+
+  TAU <- eta <- E1 <- E2 <- matrix(0, g, N); E3 <- E4 <- list();
+  k <- 1; epsilon <- Inf; 
+  m <- g*(p + p + 0.5*p*(p+1)) + (g-1) + g
+  TAU <- computet(g, Y, MU, SIGMA, DELTA, PI, DOF)$TAU
+  LL <- lk <- initial$logL
+  aic <- 2*m - 2*LL; bic <- m*log(n) - 2*LL;
+  singular <- F;  tauCutOff <- 5e-8; 
+  sumTAU <- rowSums(TAU)                                         
+  if(any(sumTAU < p)) stop("one or more of the cluster is too small. Please consider reducing g.\n")  #full options not available for GPL-ed version  
+  if(debug) cat("  Iteration  0 : loglik = ", LL, "\n")
+  
+  while((k <= itmax) && (epsilon > eps)) {            
+    saveDOF <- DOF;
+    for(i in 1:g) {
+      if(i ==1){
+        E3[[i]] <- E4[[i]] <- list()
+        DD <- diag(p); diag(DD)<-as.numeric(DELTA[[i]])                 
+        OMEGA <- SIGMA[[i]] + DD %*% DD                               
+        invOMEGA <- solve(OMEGA)                                      
+        LAMBDA <- diag(p) - DD%*%invOMEGA%*%DD                 
+        Q <- DD%*%invOMEGA%*%(t(Y)-MU[[i]]%*%matrix(1,1,N))           
+        eta[i,] <- mahalanobis(Y, as.numeric(MU[[i]]), invOMEGA, T)   
+
+        Q1 <- Q#*(matrix(1,p,1))
+        Q2 <- Q#*(matrix(1,p,1))
+        
+        for(j in 1:n) {
+          if (TAU[i,j] < tauCutOff) {E2[i,j] <- 0; E3[[i]][[j]] <- matrix(0,p,1); E4[[i]][[j]] <- matrix(0,p,p); next;}
+          T1 <- pmt(Q1[,j], rep(0,p), LAMBDA, Inf)
+          T2 <- T1
+          E2[i,j] <- 1        
+          TT <- .dds_new(rep(0,p), Q[,j], LAMBDA, Inf)
+          E3[[i]][[j]] <- TT$EX * E2[i,j]                           
+          E4[[i]][[j]] <- TT$EXX * E2[i,j]                                   
+          if(any(is.nan(E3[[i]][[j]]))||any(E3[[i]][[j]]==Inf)||any(is.nan(E4[[i]][[j]]))||any((E4[[i]][[j]]==Inf))) {E2[i,j] <- 0; E3[[i]][[j]] <- matrix(0,p,1); E4[[i]][[j]] <- matrix(0,p,p)}   
+        }              
+        if(fulldebug) cat("  ... E-step for component ", i, " completed ...\n",sep="")
+      }
+      if( i ==2){
+    
+        E3[[i]] <- E4[[i]] <- list()
+        DD <- diag(p); diag(DD)<-as.numeric(DELTA[[i]])                 
+        OMEGA <- SIGMA[[i]] + DD %*% DD                               
+        invOMEGA <- solve(OMEGA)                                      
+        LAMBDA <- diag(p) - DD%*%invOMEGA%*%DD                 
+        Q <- DD%*%invOMEGA%*%(t(Y)-MU[[i]]%*%matrix(1,1,N))           
+        eta[i,] <- mahalanobis(Y, as.numeric(MU[[i]]), invOMEGA, T)   
+        Q1 <- Q*(matrix(1,p,1)%*%sqrt((DOF[i]+p+2)/(DOF[i]+eta[i,]))) 
+        Q2 <- Q*(matrix(1,p,1)%*%sqrt((DOF[i]+p)/(DOF[i]+eta[i,])))   
+        for(j in 1:n) {
+          if (TAU[i,j] < tauCutOff) {E2[i,j] <- 0; E3[[i]][[j]] <- matrix(0,p,1); E4[[i]][[j]] <- matrix(0,p,p); next;}
+          T1 <- pmt(Q1[,j], rep(0,p), LAMBDA, round(DOF[i])+p+2)
+          T2 <- pmt(Q2[,j], rep(0,p), LAMBDA, round(DOF[i])+p)                                   
+          if (T2==0) {cat("T2=0 at ",i,j,"; tau =",TAU[i,j],"\n"); E2[i,j] <- 0; E3[[i]][[j]] <- matrix(0,p,1); E4[[i]][[j]] <- matrix(0,p,p); next;}
+          E2[i,j] <- (DOF[i]+p)/(DOF[i]+eta[i,j]) * T1 / T2         
+          TT <- .dds(rep(0,p), Q[,j], (DOF[i]+eta[i,j])/(DOF[i]+p+2)*LAMBDA, round(DOF[i])+p+2)
+          E3[[i]][[j]] <- TT$EX * E2[i,j]                           
+          E4[[i]][[j]] <- TT$EXX * E2[i,j]                                   
+          if(any(is.nan(E3[[i]][[j]]))||any(E3[[i]][[j]]==Inf)||any(is.nan(E4[[i]][[j]]))||any((E4[[i]][[j]]==Inf))) {E2[i,j] <- 0; E3[[i]][[j]] <- matrix(0,p,1); E4[[i]][[j]] <- matrix(0,p,p)}   
+        }              
+        if(fulldebug) cat("  ... E-step for component ", i, " completed ...\n",sep="")
+      }
+      
+      
+    }    
+    sumTAU <- rowSums(TAU)                                         
+    if(any(sumTAU < p)) {
+      warning("  uskew have detected one or more of the cluster is getting too small.\n")
+      break;  #full options not available for GPL-ed version
+    }
+    
+    for (i in 1:g){
+      if(i==1){
+        DD <- diag(p); 
+        diag(DD)<-as.numeric(DELTA[[i]])   
+        
+        invSIGMA <- solve(SIGMA[[i]])
+        PI[i] <- sumTAU[i]/N 
+        M1 <- colSums(E2[i,]*TAU[i,]*Y)       
+        M2 <- sum(E2[i,]*TAU[i,])            
+        M3 <- matrix(0,p,1)
+        M4 <- M5 <- M6 <- matrix(0,p,p)
+        for (j in 1:n) {
+          M3 <- M3 + TAU[i,j]*E3[[i]][[j]]    
+          M4 <- M4 + TAU[i,j]*E4[[i]][[j]]    
+        }
+        
+        if(emp){MU[[i]] <- (M1 - DD%*%M3) / M2 }
+        if(!emp){MU[[i]] <- 0 }
+        
+        for(j in 1:n) {
+          M5 <- M5 + TAU[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%t(E3[[i]][[j]])                  
+          M6 <- M6 + TAU[i,j]*E2[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%(Y[j,]-matrix(MU[[i]],1)) 
+        }
+        
+        A <- try(solve(invSIGMA * M4) %*% diag(invSIGMA%*%M5),silent=T)                   
+        DELTA[[i]] <- as.matrix(1)
+        DOF[i] <- -1 #actually normal
+        
+        DD <- diag(p); diag(DD)<-as.numeric(DELTA[[i]])                                       
+        Den <- sumTAU[i]
+        
+        if(emp){SIGMA[[i]] <- (DD%*%M4%*%DD - DD%*%t(M5) - M5%*%DD + M6)/Den}
+        if(!emp){SIGMA[[i]] <- 1}
+        
+                         
+             
+      }
+      
+      if(i==2){
+        DD <- diag(p); diag(DD)<-as.numeric(DELTA[[i]])              
+        invSIGMA <- solve(SIGMA[[i]])
+        PI[i] <- sumTAU[i]/N 
+        M1 <- colSums(E2[i,]*TAU[i,]*Y)       
+        M2 <- sum(E2[i,]*TAU[i,])            
+        M3 <- matrix(0,p,1)
+        M4 <- M5 <- M6 <- matrix(0,p,p)
+        for (j in 1:n) {
+          M3 <- M3 + TAU[i,j]*E3[[i]][[j]]    
+          M4 <- M4 + TAU[i,j]*E4[[i]][[j]]    
+        }
+        MU[[i]] <- (M1 - DD%*%M3) / M2       
+        for(j in 1:n) {
+          M5 <- M5 + TAU[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%t(E3[[i]][[j]])                  
+          M6 <- M6 + TAU[i,j]*E2[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%(Y[j,]-matrix(MU[[i]],1)) 
+        }
+        
+        A <- try(solve(invSIGMA * M4) %*% diag(invSIGMA%*%M5),silent=T)                   
+        if(is.numeric(A)) DELTA[[i]] <- A  else singular <- T
+        
+        DD <- diag(p); diag(DD)<-as.numeric(DELTA[[i]])                                       
+        Den <- sumTAU[i]
+        SIGMA[[i]] <- (DD%*%M4%*%DD - DD%*%t(M5) - M5%*%DD + M6)/Den        
+        Num <- sum(TAU[i,]*(digamma(0.5*(DOF[i]+p))-log(0.5*(DOF[i]+eta[i,]))-(DOF[i]+p)/(DOF[i]+eta[i,])))          
+        DOFfun <- function(v) {log(v/2)-digamma(v/2)+1 + Num/Den}
+        if(sign(DOFfun(1)) == sign(DOFfun(200)))  DOF[i] <- {if(abs(DOFfun(1)) < abs(DOFfun(400))) 1 else 200}  
+        else DOF[i] <- uniroot(DOFfun, c(1,200))$root                   
+      }
+    }
+    
+    if(singular) {k <- k+1; break;}
+    else tmp <- computet(g, Y, MU, SIGMA, DELTA, PI, DOF)
+    if(tmp$logL < LL) {DOF <- saveDOF; tmp <- computet(g, Y, MU, SIGMA, DELTA, PI, DOF)}                
+    TAU <- tmp$TAU; newLL <- tmp$logL; lk <- c(lk,newLL)    
+    if(debug) cat("  Iteration ",k,": loglik = ",newLL, "\n")
+    if (k < 2) epsilon <- abs(LL-newLL)/abs(newLL)
+    else {
+      tmp <- (newLL - LL)/(LL-lk[length(lk)-1])
+      tmp2 <- LL + (newLL-LL)/(1-tmp)
+      epsilon <- abs(tmp2-newLL)
+    }  
+    LL <- newLL
+    k <- k+1         
+  }
+  
+  m <- g*(p + p + 0.5*p*(p+1)) + (g-1) + g
+  aic <- 2*m - 2*LL; bic <- m*log(n) - 2*LL;    
+  clusters <- apply(TAU,2,which.max)
+  results <- list("pro"=PI, "mu"=MU, "sigma"=SIGMA, "delta"=DELTA, "dof"=DOF, 
+                  "tau"=TAU, "clusters"=clusters, "loglik"=LL, "lk"=lk, 
+                  "iter"=(k-1), "eps"=epsilon, "aic"=aic, "bic"=bic)
+  attr(results, "class") <- "fmmst" 
+  
+  
+    cat("  ----------------------------------------------------\n")
+    cat("  Iteration ", k-1, ": loglik = ", LL,"\n\n",sep="")
+    if(singular) cat("\nNOTE: Sigma is computationally singular at iteration",k-1,"\n\n")
+    summary2(results)
+  
+  return(results)     
+  
+} 
+
+
+
+
+
+
 #
 #  EM algorithm for Mixture of Unrestricted Multivariate Skew t-distributioins
 #  Package: EMMIX-uskew
@@ -200,7 +392,7 @@ init <- function(g, Y, initial=NULL, fixed=NULL, clust=NULL, nkmeans=100) {
 
 
 
-fmmstt <- function(g=1, p=1, n=1, Y, initial=NULL, known=NULL, nkmeans=20, itmax=100, eps=1e-6, debug=T, fulldebug=F) {
+fmmstt <- function(g=1, p=1, n=1, Y, initial=NULL, emp=FALSE, known=NULL, nkmeans=20, itmax=100, eps=1e-6, debug=T, fulldebug=F) {
   N <- n
   MU <- initial$MU
   SIGMA <- initial$SIGMA
@@ -334,7 +526,14 @@ computet <- function(g, Y, MU, SIGMA, DELTA, PI, DOF) {
     logL <- sum(log(dmst(Y, MU[[1]], SIGMA[[1]], DELTA[[1]], DOF[1])))
   } else {
     TAU <- matrix(0,g, n)
-    for (i in 1:g) TAU[i,] <- PI[i]*dmst(Y, as.numeric(MU[[i]]), SIGMA[[i]], DELTA[[i]], DOF[i]) 
+    for (i in 1:g){
+      if(DOF[i]==-1){ 
+        temp_df<-Inf
+      }else{
+        temp_df<-DOF[i]
+      }
+      TAU[i,] <- PI[i]*dmst(Y, as.numeric(MU[[i]]), SIGMA[[i]], DELTA[[i]], temp_df)
+    }
     logL <- sum(log(colSums(TAU)))
     sumTAU <- matrix(1, g, 1) %*% matrix(colSums(TAU),1,n) 
     TAU <- TAU/sumTAU
@@ -347,6 +546,16 @@ computet <- function(g, Y, MU, SIGMA, DELTA, PI, DOF) {
   p <- nrow(sigma)
   Tp <- 1
   ET <- .ds2(sigma, dof, mu-a)
+  mu <- matrix(mu,p)
+  EX <- mu - ET$EX
+  EXX <- ET$EXX - ET$EX%*%t(mu) - mu%*%t(ET$EX) + mu%*%t(mu)
+  return(list(EX=EX/Tp, EXX=EXX/Tp))
+}
+
+.dds_new <- function(a, mu, sigma, dof) {
+  p <- nrow(sigma)
+  Tp <- 1
+  ET <- .ds2_new(sigma, dof, mu-a)
   mu <- matrix(mu,p)
   EX <- mu - ET$EX
   EXX <- ET$EXX - ET$EX%*%t(mu) - mu%*%t(ET$EX) + mu%*%t(mu)
@@ -398,6 +607,16 @@ computet <- function(g, Y, MU, SIGMA, DELTA, PI, DOF) {
   return(list("EX"=EX, "EXX"=EXX))
 }
 
+.ds2_new <- function(sigma, dof, a=NULL) {
+  p <- dim(sigma)[1]; if(is.null(p)) {p<-1}
+  if (is.null(a)) a<- rep(0,p); a <- as.numeric(a)
+  if (p==1) {
+    Tp <- pt(a/sqrt(sigma),df=Inf)
+    EX <- -sigma/Tp #FIX
+    EXX <- sigma*Tp + a*EX
+    return(list("EX"=EX/Tp, "EXX"=EXX/Tp)); 
+  }
+}
 
 summary.fmmst <- function(object, ...) {
   g <- length(object$dof)
