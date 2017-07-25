@@ -23,13 +23,13 @@ Colon$z<-qnorm(1-Colon$p)
 
 data("hivdata")# already pval
 
-x<-fmcfust((hedenfalk$z),1,   emp=T)
-y<-fmcfust((hivdata),3,   emp=T)
-z<-fmcfust(Colon$z,1,   emp=T)
+x<-fmcfust((hedenfalk$z),1)
+y<-fmcfust((hivdata),3)
+z<-fmcfust(Colon$z,1)
 
-x2<-fmcfust((hedenfalk$z),1,   emp=F)
-y2<-fmcfust((hivdata),3,   emp=F)
-z2<-fmcfust(Colon$z,1,   emp=F)
+x2<-fmcfust((hedenfalk$z),1)
+y2<-fmcfust((hivdata),3)
+z2<-fmcfust(Colon$z,1)
 
 hiv_fit_norm <- normalmixEM(x=hivdata, lambda =pi_0(hivdata,3), k=2)
 hed_fit_norm <- normalmixEM(x=hedenfalk$z,k=2, lambda = pi_0(hedenfalk$z,0), mean.constr = c(0, NA), sd.constr=c(1, NA))
@@ -42,6 +42,7 @@ plot_normal_densities(hed_fit_norm,hedenfalk$z, 1000, 50, "Hedenfalk Normal")
 plot_skew_densities(z, Colon$z, 1000, 50, "Colon Skew  Emp. Null")
 plot_skew_densities(y, hivdata, 1000, 50, "HIV Skew Emp. Null")
 plot_skew_densities(x, hedenfalk$z, 1000, 50, "Hedenfalk Skew  Emp. Null")
+
 plot_skew_densities(z2, Colon$z, 1000, 50, "Colon Skew")
 plot_skew_densities(y2, hivdata, 1000, 50, "HIV Skew")
 plot_skew_densities(x2, hedenfalk$z, 1000, 50, "Hedenfalk Skew")
