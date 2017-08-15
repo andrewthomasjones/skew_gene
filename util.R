@@ -4,8 +4,8 @@ pi_0<-function(data, zeta){
 }
 
 
-fmcfust2 <- function(Y, zeta=1, emp,  initial=NULL, known=NULL, clust=NULL, itmax=100, eps=1e-6, nkmeans=20, verbose=T, method=c("moments","transformation","EMMIXskew","EMMIXuskew"), convergence=c("Aitken","likelihood","parameters")) {
-  g=2
+fmcfust2 <- function(Y, zeta=1, emp,g=2,  initial=NULL, known=NULL, clust=NULL, itmax=100, eps=1e-6, nkmeans=20, verbose=T, method=c("moments","transformation","EMMIXskew","EMMIXuskew"), convergence=c("Aitken","likelihood","parameters")) {
+
   q=1
   Y<-as.matrix(Y)
   p <- ncol(Y); n <- nrow(Y); fulldebug=F; 
@@ -23,10 +23,17 @@ fmcfust2 <- function(Y, zeta=1, emp,  initial=NULL, known=NULL, clust=NULL, itma
     else cat("with ", g, "components\n")
     cat("  ----------------------------------------------------\n\n")
   }  
-  initial_1 <-fmcfust(2, Y, initial =list(pro=pi_0(Y,zeta)), itmax=10, verbose=F)
+  
+  if(g==2){
+  initial_1 <-fmcfust(g, Y, initial =list(pro=pi_0(Y,zeta)), itmax=10, verbose=F)
   initial_1$pro<-pi_0(Y,zeta)
+  }else{
+    initial_1 <-fmcfust(g, Y, itmax=10, verbose=F)
+    
+  }
+  
   ndelta<-4
-  res <- fmfustt2( Y, initial_1, ndelta, emp, itmax=itmax)
+  res <- fmfustt2((Y), initial_1, ndelta, emp, itmax=itmax)
   return(res)
 }
 
@@ -53,22 +60,16 @@ plot_normal_densities<-function(fit,data, k, bins,name){
 }
 
 
-
-
-
 skew_densities<-function(fit,data, k){
   G<-length(fit$pro)
-  y<-array(NA, c(k,G+2))
+  y<-array(NA, c(k,G+1))
   xseq<-seq(min(data), max(data), length.out=k)
   y[,1]<-xseq
-  y[,2]<-dnorm(y[,1])*fit$pro[1]
-  for(i in 3:(G+2)){
-    y[,i]<-fit$pro[i-2]*dcfust(dat=as.matrix(xseq,nrow=1), mu=as.vector(fit$mu[[i-2]]), sigma=fit$sigma[[i-2]], delta=fit$delta[[i-2]], dof=fit$dof[i-2])
-    
-    
+  for(i in 2:(G+1)){
+    y[,i]<-fit$pro[i-1]*dcfust(dat=as.matrix(xseq,nrow=1), mu=as.vector(fit$mu[[i-1]]), sigma=fit$sigma[[i-1]], delta=fit$delta[[i-1]], dof=fit$dof[i-1])
   }
   
-  colnames(y)<-c("x", "norm", paste0('y', seq(1:G)))
+  colnames(y)<-c("x", paste0('y', seq(1:G)))
   return(y)
 }
 
@@ -76,6 +77,38 @@ plot_skew_densities<-function(fit, data, k, bins, name){
   data1<-as.data.frame(skew_densities(fit,data, k))
   data2<-data.frame(data=data)
   p=ggplot(data=data1)+geom_histogram(data=data2, aes(y=..density..,x=data), fill='white', colour='grey', bins=bins)+geom_line(aes(x=x,  y=y1))+geom_line(aes(x=x,  y=y2))+geom_line(data=data1, aes(x=x,  y=y1+y2))
+  p=p+scale_colour_discrete(guide=FALSE)+theme_bw()+xlab("z-scores")+ylab("Density")+ggtitle(name)
+  print(p)
+}
+
+
+
+skew_norm_densities<-function(fit,data, k){
+  G<-length(fit$pro)
+  y<-array(NA, c(k,G+1))
+  xseq<-seq(min(data), max(data), length.out=k)
+  y[,1]<-xseq
+  y[,2]<-dnorm(y[,1], mean=fit$mu[[1]], sd=sqrt(fit$sigma[[1]]))*fit$pro[1]
+  for(i in 3:(G+1)){
+    y[,i]<-fit$pro[i-1]*dcfust(dat=as.matrix(xseq,nrow=1), mu=as.vector(fit$mu[[i-1]]), sigma=fit$sigma[[i-1]], delta=fit$delta[[i-1]], dof=fit$dof[i-1])
+  }
+  
+  colnames(y)<-c("x", paste0('y', seq(1:G)))
+  return(y)
+}
+
+plot_skew_norm_densities<-function(fit, data, k, bins, name){
+  data1<-as.data.frame(skew_norm_densities(fit,data, k))
+  data2<-data.frame(data=data)
+  p=ggplot(data=data1)+geom_histogram(data=data2, aes(y=..density..,x=data), fill='white', colour='grey', bins=bins)+geom_line(aes(x=x,  y=y1))+geom_line(aes(x=x,  y=y2))+geom_line(data=data1, aes(x=x,  y=y1+y2))
+  p=p+scale_colour_discrete(guide=FALSE)+theme_bw()+xlab("z-scores")+ylab("Density")+ggtitle(name)
+  print(p)
+}
+
+plot_skew_densities3<-function(fit, data, k, bins, name){
+  data1<-as.data.frame(skew_densities(fit,data, k))
+  data2<-data.frame(data=data)
+  p=ggplot(data=data1)+geom_histogram(data=data2, aes(y=..density..,x=data), fill='white', colour='grey', bins=bins)+geom_line(aes(x=x,  y=y1))+geom_line(aes(x=x,  y=y2))+geom_line(aes(x=x,  y=y3))+geom_line(data=data1, aes(x=x,  y=y1+y2+y3))
   p=p+scale_colour_discrete(guide=FALSE)+theme_bw()+xlab("z-scores")+ylab("Density")+ggtitle(name)
   print(p)
 }

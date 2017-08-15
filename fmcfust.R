@@ -21,12 +21,12 @@
 
 
 fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, fulldebug=F, convergence="Aitken" ){
-  g=2
+  g=length(initial$mu)
   p=1
   q=1
   n=1
   
-   N <- nrow(Y)
+    N <- nrow(Y)
     MU <- initial$mu
     
     SIGMA <- initial$sigma
@@ -45,9 +45,16 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
 
     TAU <- eta <- E1 <- E2 <- matrix(0, g, N); E3 <- E4 <- list();
     k <- 1; epsilon <- Inf;      
-    #m <- g*(p*(!fflag$MU) + (p*q)*(!fflag$DELTA) + 0.5*p*(p+1)*(!fflag$SIGMA)) + g*(!fflag$DOF) + (g-1)*(!fflag$PI)
+    m <- g*(p*(!fflag$MU) + (p*q)*(!fflag$DELTA) + 0.5*p*(p+1)*(!fflag$SIGMA)) + g*(!fflag$DOF) + (g-1)*(!fflag$PI)
+    if(emp==T){
+      
+      m <- g2*(p + (p*q) + 0.5*p*(p+1)) + g2+ (g-1)+1+1
+    }else{
+      g2<-g-1
+      m <- g2*(p + (p*q) + 0.5*p*(p+1)) + g2+ (g-1)
+    }
     #m <- 1*(p*(!fflag$MU) + (p*q)*(!fflag$DELTA) + 0.5*p*(p+1)*(!fflag$SIGMA))+  g*(!fflag$DOF) + (g-1)*(!fflag$PI)
-    m=5
+    #m=5
     TAU <- initial$tau
     LL <- lk <- initial$loglik
     aic <- aicVec <- 2*m - 2*LL; bic <- bicVec <- m*log(n) - 2*LL;
@@ -58,9 +65,10 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
     E1s <- E1 <-  matrix(0, g, N)
 
     while((k <= itmax) && (epsilon > eps)) {
+  
         saveDOF <- DOF;
-   
         
+
         for(i in 1:g) {
           if(i==1){
             E3[[i]] <- E4[[i]] <- list()
@@ -84,7 +92,7 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
               if(any(is.nan(E3[[i]][[j]]))||any(E3[[i]][[j]]==Inf)||any(is.nan(E4[[i]][[j]]))||any((E4[[i]][[j]]==Inf))) {E2[i,j] <- 0; E3[[i]][[j]] <- matrix(0,q,1); E4[[i]][[j]] <- matrix(0,q,q)}
             }
             
-          }
+          }else{
             E3[[i]] <- E4[[i]] <- list()
             DD <- DELTA[[i]]                                      
             OMEGA <- SIGMA[[i]] + DD %*% t(DD)                    
@@ -105,6 +113,7 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
                 E4[[i]][[j]] <- TT$EXX * E2[i,j]
                 if(any(is.nan(E3[[i]][[j]]))||any(E3[[i]][[j]]==Inf)||any(is.nan(E4[[i]][[j]]))||any((E4[[i]][[j]]==Inf))) {E2[i,j] <- 0; E3[[i]][[j]] <- matrix(0,q,1); E4[[i]][[j]] <- matrix(0,q,q)}
             }
+          }
             if(fulldebug) cat("  ... E-step for component ", i, " completed ...\n",sep="")
             
         }
@@ -113,6 +122,7 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
         if(cvg=="parameters") par.prev <- list(MU=MU, SIGMA=SIGMA, DELTA=DELTA, DOF=DOF, PI=PI)
         
         for (i in 1:g) {
+          
           if(i==1){
             
             if(sumTAU[i] < p) cat("  NOTE: cluster", i, "is getting too small.\n")
@@ -130,22 +140,36 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
               M3 <- M3 + TAU[i,j]*E3[[i]][[j]]       
               M4 <- M4 + TAU[i,j]*E4[[i]][[j]]        
             }
-            MU[[i]] <- 0
-            for(j in 1:n) {
-              M5 <- M5 + TAU[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%t(E3[[i]][[j]])                    
-              M6 <- M6 + TAU[i,j]*E2[i,j]*(matrix(Y[j,],p)-MU[[i]])%*%(Y[j,]-matrix(MU[[i]],1)) 
-            }
+            if(emp){
+              MU[[i]] <- M1 / M2}
+            else{
+              MU[[i]] <-0
+              }
             
+           
+            for(j in 1:n) {
+              #M5 <- M5 + TAU[i,j]*(Y[,j]-MU[[i]])%*%t(E3[[i]][[j]])                    
+              M6 <- M6 + TAU[i,j]*E2[i,j]*(Y[,j]-MU[[i]])%*%(Y[,j]-MU[[i]]) 
+
+            }
+
             DD <- as.matrix(0)
+            DELTA[[i]] <- as.matrix(0)
             Den <- sumTAU[i]
-            SIGMA[[i]] <- 1
-            DOF[i] <- 100
+            if(emp){
+              SIGMA[[i]] <- (DD%*%t(M4)%*%t(DD) - DD%*%t(M5) - M5%*%t(DD) + M6)/Den
+            }else{
+              SIGMA[[i]] <- as.matrix(1)
+            }
+              
+            DOF[i] <- Inf
             
           }
-          
+          else{
             if(sumTAU[i] < p) cat("  NOTE: cluster", i, "is getting too small.\n")
             
             DD <- DELTA[[i]]
+            
             invSIGMA <- solve(SIGMA[[i]])
             if(!fflag$PI) PI[i] <- sumTAU[i]/N
             M1 <- colSums(E2[i,]*TAU[i,]*Y)
@@ -178,41 +202,50 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
                 if(sign(DOFfun(1)) == sign(DOFfun(200)))  DOF[i] <- {if(abs(DOFfun(1)) < abs(DOFfun(400))) 1 else 200}
                 else DOF[i] <- uniroot(DOFfun, c(1,200))$root
             }
+          }
+        
         }
-        print(paste(as.numeric(MU[[1]]),SIGMA[[1]], DELTA[[1]], DOF[1],PI[1] ))
-
         
         #DOF[1]<-100
-        DELTA[[1]]<-as.matrix(0)
-        
+        #DELTA[[1]]<-as.matrix(0)
         
         if(fulldebug) cat("  ... Iteration ", k, " M-step completed ...\n",sep="") 
         if(singular) {k <- k+1; break;}
-        else tmp <- fust_computeTAU(g, Y, MU, SIGMA, DELTA, PI, DOF)
+        else {tmp <- fust_computeTAU(g, Y, MU, SIGMA, DELTA, PI, DOF)}
      
         if(tmp$logL < LL) {DOF <- saveDOF; tmp <- fust_computeTAU(g, Y, MU, SIGMA, DELTA, PI, DOF)}
         TAU <- tmp$TAU; newLL <- tmp$logL; lk <- c(lk,newLL)
         if(debug) cat("  Iteration ",k,": loglik = ",newLL, "\n")
+       
+   
         if(cvg=="Aitken" && k > 2) {
             tmp <- (newLL - LL)/(LL-lk[length(lk)-1])
             tmp2 <- LL + (newLL-LL)/(1-tmp)
-            epsilon <- abs(tmp2-newLL)}
-        else {if(cvg=="parameters"){
+            
+            epsilon <- abs(tmp2-newLL)
+            }
+        else {
+          if(cvg=="parameters"){
           epsilon <- F
           for(i in 1:g){  
               if(abs(PI[i]-par.prev$PI[i])/abs(PI[i])>eps) {epsilon<-T; break} 
-              if(abs(DOF[i]-par.prev$DOF[i])/abs(DOF[i])>eps) {epsilon<-T; break}
               if(all(abs(as.numeric(MU[[i]])-as.numeric(par.prev$MU[[i]]))/abs(as.numeric(MU[[i]]))>eps)) {epsilon<-T; break} 
               if(all(abs(as.numeric(SIGMA[[i]])-as.numeric(par.prev$SIGMA[[i]]))/abs(as.numeric(SIGMA[[i]]))>eps)) {epsilon<-T; break}
-              if(all(abs(as.numeric(DELTA[[i]])-as.numeric(par.prev$DELTA[[i]]))/abs(as.numeric(DELTA[[i]]))>eps)) {epsilon<-T; break}   
-          }    
+              if(i!=1){
+                if(abs(DOF[i]-par.prev$DOF[i])/abs(DOF[i])>eps) {epsilon<-T; break} 
+                if(all(abs(as.numeric(DELTA[[i]])-as.numeric(par.prev$DELTA[[i]]))/abs(as.numeric(DELTA[[i]]))>eps)) {epsilon<-T; break}  
+              }
+          } 
+         
           if(epsilon) epsilon<-Inf else epsilon<-0 
           }
           else  epsilon <- abs(LL-newLL)/abs(newLL)
         }
+        
         aic <- 2*m - 2*newLL; bic <- m*log(n) - 2*newLL; aicVec <- c(aicVec, aic); bicVec <- c(bicVec, bic)
         LL <- newLL
         k <- k+1
+ 
     }
     aic <- 2*m - 2*LL; bic <- m*log(n) - 2*LL;
     clusters <- apply(TAU,2,which.max)
@@ -230,8 +263,10 @@ fmfustt2 <- function( Y, initial, ndelta, emp=F, itmax=100, eps=1e-6, debug=T, f
 
 
 fust_computeTAU <- function(g, Y, MU, SIGMA, DELTA, PI, DOF) {
-    n <- nrow(Y); p <- ncol(Y)          
+    n <- nrow(Y); p <- ncol(Y)     
+    
     if(is.null(n)) {n <- 1; p <- length(Y)}   
+    
     if (g == 1) {
         TAU <- matrix(1, g, n)
         logL <- sum(log(dcfust(Y, MU[[1]], SIGMA[[1]], DELTA[[1]], DOF[1])))
@@ -239,8 +274,12 @@ fust_computeTAU <- function(g, Y, MU, SIGMA, DELTA, PI, DOF) {
         TAU <- matrix(0,g, n)
         
         for (i in 1:g) {
-         
-          TAU[i,] <- PI[i]*dcfust(Y, as.numeric(MU[[i]]), SIGMA[[i]], DELTA[[i]], DOF[i])
+          if(is.infinite(DOF[i])){
+            TAU[i,] <- PI[i]*dnorm(Y, mean=as.numeric(MU[[i]]), sd=sqrt(SIGMA[[i]]))
+          }
+          else{
+            TAU[i,] <- PI[i]*dcfust(Y, as.numeric(MU[[i]]), SIGMA[[i]], DELTA[[i]], DOF[i])
+          }
         }
         logL <- sum(log(colSums(TAU)))
         sumTAU <- matrix(1, g, 1) %*% matrix(colSums(TAU),1,n)

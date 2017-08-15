@@ -57,21 +57,39 @@ FDR_etc(namer(hed_fit),0.1)
 FDR_etc(namer(col_fit),0.1)
 
 #partly free fits
+#emprical null - bad actually
 
+x<-c(rnorm(1000), rnorm(200, mean = 3))
+x1<-fmcfust2(x,1.5, verbose=T, emp=T)
+plot_skew_norm_densities(x1 , x, 1000, 50, "Test")
 
+# hed_fit_new2<-fmcfust2((hedenfalk$z),1, verbose=T, emp=T)
+# plot_skew_densities(hed_fit_new2 , hedenfalk$z, 1000, 50, "Hedenfalk Skew/Norm")
+# FDR_etc(namer(hed_fit_new2),0.1)
+#         
 
-hed_fit_new<-fmcfust2((hedenfalk$z),1, verbose=T, emp=F)
-plot_skew_densities(hed_fit_new , hedenfalk$z, 1000, 50, "Hedenfalk Skew/Norm")
+hiv_fit_new2<-fmcfust2((hivdata),3, verbose=T, emp=T)
+plot_skew_norm_densities(hiv_fit_new2 , hivdata, 1000, 50, "HIV Skew/Norm")
+FDR_etc(namer(hiv_fit_new2),0.1)
+
+# col_fit_new2<-fmcfust2(Colon$z,1, verbose=T, emp=T)
+# plot_skew_densities(col_fit_new2 , Colon$z, 1000, 50, "Colon Skew/Norm")
+# FDR_etc(namer(col_fit_new2),0.1)
+
+#partly free fits
+#theoretocal null
+###############################################################################
+hed_fit_new<-fmcfust2(hedenfalk$z,1, verbose=T, emp=F)
+plot_skew_norm_densities(hed_fit_new , hedenfalk$z, 1000, 50, "Hedenfalk Skew/Norm")
 FDR_etc(namer(hed_fit_new),0.1)
-        
-hiv_fit_new<-fmcfust2((hivdata),3, verbose=T, emp=F)
-plot_skew_densities(hiv_fit_new , hedenfalk$z, 1000, 50, "HIV Skew/Norm")
-FDR_etc(namer(hiv_fit_new),0.1)
+
+# hiv_fit_new<-fmcfust2(hivdata,3, verbose=T, emp=F, g=3)
+# plot_skew_densities3(hiv_fit_new , hivdata, 1000, 50, "HIV Skew/Norm")
+# FDR_etc(namer(hiv_fit_new),0.1)
 
 col_fit_new<-fmcfust2(Colon$z,1, verbose=T, emp=F)
-plot_skew_densities(col_fit_new , hedenfalk$z, 1000, 50, "Colon Skew/Norm")
+plot_skew_norm_densities(col_fit_new , Colon$z, 1000, 50, "Colon Skew/Norm")
 FDR_etc(namer(col_fit_new),0.1)
-
 
 
 
