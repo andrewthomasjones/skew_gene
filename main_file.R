@@ -68,9 +68,9 @@ plot_skew_norm_densities(x1 , x, 1000, 50, "Test")
 # FDR_etc(namer(hed_fit_new2),0.1)
 #         
 
-hiv_fit_new2<-fmcfust2((hivdata),3, verbose=T, emp=T)
-plot_skew_norm_densities(hiv_fit_new2 , hivdata, 1000, 50, "HIV Skew/Norm")
-FDR_etc(namer(hiv_fit_new2),0.1)
+hiv_fit_new<-fmcfust2((hivdata),3, verbose=T, emp=T)
+plot_skew_norm_densities(hiv_fit_new , hivdata, 1000, 50, "HIV Skew/Norm")
+FDR_etc(namer(hiv_fit_new),0.1)
 
 # col_fit_new2<-fmcfust2(Colon$z,1, verbose=T, emp=T)
 # plot_skew_densities(col_fit_new2 , Colon$z, 1000, 50, "Colon Skew/Norm")
@@ -90,6 +90,42 @@ FDR_etc(namer(hed_fit_new),0.1)
 col_fit_new<-fmcfust2(Colon$z,1, verbose=T, emp=F)
 plot_skew_norm_densities(col_fit_new , Colon$z, 1000, 50, "Colon Skew/Norm")
 FDR_etc(namer(col_fit_new),0.1)
+
+############################################
+2*(5)-2*col_fit_norm$loglik
+col_fit$aic
+col_fit_new$aic
+
+2*(5)*log(length(col_fit_norm$x)) -2*col_fit_norm$loglik
+col_fit$bic
+col_fit_new$bic
+
+
+2*(5)-2*hiv_fit_norm$loglik
+hiv_fit$aic
+hiv_fit_new$aic
+
+2*(5)*log(length(hiv_fit_norm$x)) -2*hiv_fit_norm$loglik
+hiv_fit$bic
+hiv_fit_new$bic
+
+
+
+2*(5)-2*hed_fit_norm$loglik
+hed_fit$aic
+hed_fit_new$aic
+
+2*(5)*log(length(hed_fit_norm$x)) -2*hed_fit_norm$loglik
+hed_fit$bic
+hed_fit_new$bic
+
+
+
+
+
+
+
+
 
 
 
