@@ -31,11 +31,6 @@ hiv_fit <- fmcfust(2, hivdata, initial =list(pro=pi_0(hivdata,3)), itmax=10)
 hed_fit <- fmcfust(2, hedenfalk$z,initial =list(pro=pi_0(hedenfalk$z,0)))
 col_fit <- fmcfust(2, Colon$z,initial =list(pro=pi_0(Colon$z, 0)))
 
-#normal fits
-
-hiv_fit_norm <-normalmixEM(x=hivdata, lambda =pi_0(hivdata,3), k=2)
-hed_fit_norm <- normalmixEM(x=hedenfalk$z,k=2, lambda = pi_0(hedenfalk$z,0), mean.constr = c(0, NA), sd.constr=c(1, NA))
-col_fit_norm <- normalmixEM(x=Colon$z, lambda =pi_0(Colon$z,0), k=2, mean.constr = c(0, NA), sd.constr=c(1, NA))
 
 #skew and normal combined fits
 hiv_fit_new <- fmcfust(1, hivdata[1:100])

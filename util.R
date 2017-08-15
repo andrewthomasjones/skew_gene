@@ -80,12 +80,7 @@ plot_skew_densities<-function(fit, data, k, bins, name){
   print(p)
 }
 
-plot_normal_densities<-function(fit, k, bins){
-  data1<-as.data.frame(normal_densities(fit,k))
-  p=ggplot(data=data1)+geom_histogram(data=data2, aes(y=..density..,x=data), fill='white', colour='grey', bins=bins)+geom_line(aes(x=x,  y=y1))+geom_line(aes(x=x,  y=y2))+geom_line(data=data1, aes(x=x,  y=y1+y2))
-  p=p+scale_colour_discrete(guide=FALSE)+theme_bw()+xlab("z-scores")+ylab("Density")
-  print(p)
-}
+
 
 namer<-function(fit){
   #tidy names on other vars too

@@ -1,14 +1,19 @@
 library(EMMIXcskew)
 library(EMMIXskew)
-
 library(mnormt)
 library(locfdr)
+library(ggplot2)
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("qvalue")
 library(qvalue)
 library(cepp)
+library(mixtools)
+
 source("fmcfust.R")
 source("fmmst.R")
+source("util.R")
 
-
+###############################################################
 data("hedenfalk")
 hedenfalk$z<-qnorm(1-hedenfalk$p)
 data("Colon")
@@ -21,17 +26,53 @@ Colon$z<-qnorm(1-Colon$p)
 
 data("hivdata")# already pval
 
+###############################################################
 
-x<-fmcfust2((hedenfalk$z),1, verbose=T, emp=F)
-y<-fmcfust2((hivdata),3, verbose=T, emp=F)
-z<-fmcfust2(Colon$z,1, verbose=T, emp=F, itmax=20)
 
-heden<-namer(x)
-log(length(hed_fit_norm$x))*3-2*hed_fit_norm$loglik
-FDR_etc(heden, 0.1)
+#normal fits
+hiv_fit_norm <-normalmixEM(x=hivdata, lambda =pi_0(hivdata,3), k=2)
+hed_fit_norm <- normalmixEM(x=hedenfalk$z,k=2, lambda = pi_0(hedenfalk$z,0), mean.constr = c(0, NA), sd.constr=c(1, NA))
+col_fit_norm <- normalmixEM(x=Colon$z, lambda =pi_0(Colon$z,0), k=2, mean.constr = c(0, NA), sd.constr=c(1, NA))
 
-plot_skew_densities(z, Colon$z, 1000, 50, "Colon Skew")
-plot_skew_densities(y, hivdata, 1000, 50, "HIV Skew")
-plot_skew_densities(x, hedenfalk$z, 1000, 50, "Hedenfalk Skew")
+plot_normal_densities(hiv_fit_norm,hivdata, 1000, 40, "HIV Normal")
+plot_normal_densities(hed_fit_norm,hedenfalk$z, 1000, 40, "Hedenfalk Normal")
+plot_normal_densities(col_fit_norm, Colon$z, 1000, 50, "Colon Normal")
+
+FDR_etc(namer(hiv_fit_norm),0.1)
+FDR_etc(namer(hed_fit_norm),0.1)
+FDR_etc(namer(col_fit_norm),0.1)
+
+
+#free fits
+hiv_fit <- fmcfust(2, hivdata, initial =list(pro=pi_0(hivdata,3)))
+hed_fit <- fmcfust(2, hedenfalk$z,initial =list(pro=pi_0(hedenfalk$z,0)))
+col_fit <- fmcfust(2, Colon$z,initial =list(pro=pi_0(Colon$z, 0)))
+
+plot_skew_densities(col_fit , Colon$z, 1000, 50, "Colon Skew")
+plot_skew_densities(hiv_fit , hivdata, 1000, 50, "HIV Skew")
+plot_skew_densities(hed_fit , hedenfalk$z, 1000, 50, "Hedenfalk Skew")
+
+FDR_etc(namer(hiv_fit),0.1)
+FDR_etc(namer(hed_fit),0.1)
+FDR_etc(namer(col_fit),0.1)
+
+#partly free fits
+
+
+
+hed_fit_new<-fmcfust2((hedenfalk$z),1, verbose=T, emp=F)
+plot_skew_densities(hed_fit_new , hedenfalk$z, 1000, 50, "Hedenfalk Skew/Norm")
+FDR_etc(namer(hed_fit_new),0.1)
+        
+hiv_fit_new<-fmcfust2((hivdata),3, verbose=T, emp=F)
+plot_skew_densities(hiv_fit_new , hedenfalk$z, 1000, 50, "HIV Skew/Norm")
+FDR_etc(namer(hiv_fit_new),0.1)
+
+col_fit_new<-fmcfust2(Colon$z,1, verbose=T, emp=F)
+plot_skew_densities(col_fit_new , hedenfalk$z, 1000, 50, "Colon Skew/Norm")
+FDR_etc(namer(col_fit_new),0.1)
+
+
+
 
 
