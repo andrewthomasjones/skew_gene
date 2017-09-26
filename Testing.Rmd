@@ -1,8 +1,8 @@
 ---
 title: "Fitting Mixtures of Skew-t distributions to transformed p-values"
 output:
-  pdf_document: default
   html_notebook: default
+  pdf_document: default
 ---
 
 ```{r echo=F, cache=TRUE}
@@ -18,14 +18,16 @@ library(knitr)
 ```
 
 ```{r, include=F}
-source("density.R")
-source("fit.R")
-source("util.R") 
+# source("density.R")
+# source("fit.R")
+# source("util.R") 
+# 
+# 
+source("./other/fmcfust.R")
+source("./other/fmmst.R")
+source("./other/util.R")
 
 
-source("./misc/fmcfust.R")
-source("./misc/fmmst.R")
-source("./misc/fmcfust.R")
 
 ```
 #Data
@@ -48,11 +50,13 @@ data("hivdata")# already pval
 #Fit Mixture of 2 Normals
 As in orginal paper.
 
-```{r echo=F, plot.show='hold', cache=TRUE}
+```{r echo=F,  cache=TRUE}
 hiv_fit_norm <- normalmixEM(x=hivdata, lambda =pi_0(hivdata,3), k=2, maxrestarts=100)
-hed_fit_norm <- normalmixEM(x=hedenfalk$z,k=2, lambda = pi_0(hedenfalk$z,0), mean.constr = c(0, NA), sd.constr=c(1, NA), maxrestarts=100) 
-col_fit_norm <- normalmixEM(x=Colon$z, lambda =pi_0(Colon$z,0), k=2, mean.constr = c(0, NA), sd.constr=c(1, NA), maxrestarts=100)
+hed_fit_norm <- normalmixEM(x=hedenfalk$z,k=2, lambda = pi_0(hedenfalk$z,0.2), mean.constr = c(0, NA), sd.constr=c(1, NA), maxrestarts=100) 
+col_fit_norm <- normalmixEM(x=Colon$z, lambda =pi_0(Colon$z,0.2), k=2, mean.constr = c(0, NA), sd.constr=c(1, NA), maxrestarts=100)
+```
 
+```{r plot.show='hold'}
 plot_normal_densities(hiv_fit_norm,hivdata, 1000, 50, "Hiv Emp. Normal")
 plot_normal_densities(col_fit_norm,Colon$z, 1000, 50, "Colon Normal")
 plot_normal_densities(hed_fit_norm,hedenfalk$z, 1000, 50, "Hedenfalk Normal")
@@ -70,89 +74,110 @@ kable(FDR_table(namer(col_fit_norm),c(seq(0.1, 0.5, 0.1))),caption="Estimated FD
 # Fit mixture of skew t-distributions
 
 ## Empirical mean
-```{r echo=F, plot.show='hold', cache=TRUE}
+```{r echo=F, results='hide', cache=TRUE}
 hiv_fit <- fmcfust(2, hivdata, initial =list(pro=pi_0(hivdata,3)))
 hed_fit <- fmcfust(2, hedenfalk$z,initial =list(pro=pi_0(hedenfalk$z,0)))
 col_fit <- fmcfust(2, Colon$z,initial =list(pro=pi_0(Colon$z, 0)))
+```
 
+```{r plot.show='hold'}
 plot_skew_densities(col_fit , Colon$z, 1000, 50, "Colon Skew")
 plot_skew_densities(hiv_fit , hivdata, 1000, 50, "HIV Skew")
 plot_skew_densities(hed_fit , hedenfalk$z, 1000, 50, "Hedenfalk Skew")
 ```
 
 ```{r, echo=F, results='asis'}
-kable(FDR_table(FDR_etc(namer(hiv_fit),0.1), caption="Mixture of skew t - HIV"))
+kable(FDR_table(namer(hiv_fit),c(seq(0.01, 0.1, 0.01))), caption="Mixture of skew t - HIV")
 ```
 
 ```{r, echo=F, results='asis'}
-kable(FDR_table(FDR_etc(namer(hed_fit),0.1), caption="Mixture of skew t - Hedenfalk"))
+kable(FDR_table(namer(hed_fit),c(seq(0.1, 0.5, 0.1))), caption="Mixture of skew t - Hedenfalk")
 ```
 
 ```{r, echo=F, results='asis'}
-kable(FDR_table(FDR_etc(namer(col_fit),0.1), caption="Mixture of skew t - Colon Cancer"))
+kable(FDR_table(namer(col_fit),c(seq(0.1, 0.5, 0.1))), caption="Mixture of skew t - Colon Cancer")
 ```
 
 # Fit mixture of one skew t-distribution and one normal.
-```{r echo=F, plot.show='hold', cache=TRUE}
-hiv_fit_new<-fmcfust2((hivdata),3, verbose=T, emp=T)
+```{r echo=F, cache=TRUE}
+hiv_fit_new<-fmcfust2((hivdata),2.5, verbose=F, emp=T)
+```
+
+```{r  plot.show='hold'}
 plot_skew_norm_densities(hiv_fit_new , hivdata, 1000, 50, "HIV Skew/Norm")
 ```
 
 ```{r, echo=F, results='asis'} 
-kable(FDR_table(namer(hiv_fit_new),0.1), caption="HIV Skew/Norm")
+kable(FDR_table(namer(hiv_fit_new),c(seq(0.01, 0.1, 0.01))), caption="HIV Skew/Norm")
 ```
 
 #partly free fits
 #theoretocal null
-```{r echo=F, plot.show='hold', cache=TRUE}
-hed_fit_new<-fmcfust2(hedenfalk$z,1, verbose=T, emp=F)
+```{r echo=F, cache=TRUE}
+hed_fit_new<-fmcfust2(hedenfalk$z,1, verbose=F, emp=F)
+```
+
+```{r plot.show='hold'}
 plot_skew_norm_densities(hed_fit_new , hedenfalk$z, 1000, 50, "Hedenfalk Skew/Norm")
 ```
 
 ```{r, echo=F, results='asis'} 
-kable(FDR_table(namer(hed_fit_new),0.1), caption="Hedenfalk Skew/Norm")
+kable(FDR_table(namer(hed_fit_new),c(seq(0.1, 0.5, 0.1))), caption="Hedenfalk Skew/Norm")
 ```
-# hiv_fit_new<-fmcfust2(hivdata,3, verbose=T, emp=F, g=3)
-# plot_skew_densities3(hiv_fit_new , hivdata, 1000, 50, "HIV Skew/Norm")
-# FDR_etc(namer(hiv_fit_new),0.1)
 
-col_fit_new<-fmcfust2(Colon$z,1, verbose=T, emp=F)
+```{r echo=F,  cache=TRUE}
+col_fit_new<-fmcfust2(Colon$z,1.2, verbose=F, emp=F)
+```
+
+```{r plot.show='hold'}
 plot_skew_norm_densities(col_fit_new , Colon$z, 1000, 50, "Colon Skew/Norm")
+```
+
 ```{r, echo=F, results='asis'} 
-kable(FDR_table(namer(col_fit_new),0.1), caption="Colon Skew/Norm")
+kable(FDR_table(namer(col_fit_new),c(seq(0.1, 0.5, 0.1))), caption="Colon Skew/Norm")
 ```
 
 # Some BIC and AIC values
 
-```{r}
-2*(5)-2*col_fit_norm$loglik
-col_fit$aic
-col_fit_new$aic
+```{r, echo=F}
+col_AIC<-c(2*(5)-2*col_fit_norm$loglik,
+col_fit$aic,
+col_fit_new$aic)
 
-2*(5)*log(length(col_fit_norm$x)) -2*col_fit_norm$loglik
-col_fit$bic
-col_fit_new$bic
+col_BIC<-c(
+2*(5)*log(length(col_fit_norm$x)) -2*col_fit_norm$loglik,
+col_fit$bic,
+col_fit_new$bic)
 
+HIV_AIC<-c(2*(5)-2*hiv_fit_norm$loglik,
+hiv_fit$aic,
+hiv_fit_new$aic)
 
-2*(5)-2*hiv_fit_norm$loglik
-hiv_fit$aic
-hiv_fit_new$aic
+HIV_BIC<-c(2*(5)*log(length(hiv_fit_norm$x)) -2*hiv_fit_norm$loglik,
+hiv_fit$bic,
+hiv_fit_new$bic)
 
-2*(5)*log(length(hiv_fit_norm$x)) -2*hiv_fit_norm$loglik
-hiv_fit$bic
-hiv_fit_new$bic
+Hed_AIC<-c(2*(5)-2*hed_fit_norm$loglik,
+hed_fit$aic,
+hed_fit_new$aic)
 
+Hed_BIC<-c(2*(5)*log(length(hed_fit_norm$x)) -2*hed_fit_norm$loglik,
+hed_fit$bic,
+hed_fit_new$bic)
 
+df_BIC<-data.frame(Colon=col_BIC, HIV=HIV_BIC, Hedenfalk=Hed_BIC)
+df_AIC<-data.frame(Colon=col_AIC, HIV=HIV_AIC, Hedenfalk=Hed_AIC)
+row.names(df_BIC)<-c("Normal", "Skew t", "Skew/Norm")
+row.names(df_AIC)<-c("Normal", "Skew t", "Skew/Norm")
 
-2*(5)-2*hed_fit_norm$loglik
-hed_fit$aic
-hed_fit_new$aic
+```
 
-2*(5)*log(length(hed_fit_norm$x)) -2*hed_fit_norm$loglik
-hed_fit$bic
-hed_fit_new$bic
+```{r, echo=F, results='asis'} 
+kable(df_BIC, caption="BIC Fit Information")
+```
 
-
+```{r, echo=F, results='asis'} 
+kable(df_AIC, caption="AIC Fit Information")
 ```
 
 
