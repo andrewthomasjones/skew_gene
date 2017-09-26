@@ -1,17 +1,17 @@
-fmcfust<-function(Y, zeta=1, emp=F){
+fmcfust<-function(Y, zeta=1, emp=F, itmax){
   
   g<-2
   Y<-as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
   q<-1
-  itmax <- 1000   #do not allow more than 1000 iterations (too much)
+   #do not allow more than 1000 iterations (too much)
   if(n <= 20*g) stop("sample size is too small!")      
   ndelta<-4
   
   initial <- init(g, t(Y))
   initial$pro<-pi_0(Y,zeta)
-  fit<-fmmstt_new(g, p, n, Y, initial, emp, itmax=itmax)
+  fit<-fmmstt_new(g, p, n, Y, initial, emp, itmax)
   return(fit) 
   
 }

@@ -77,6 +77,17 @@ FDR_etc<-function(fit, c0){
   return(list(N_r=N_r, FDR=FDR, FNDR=FNDR, FNR=FNR,FPR=FPR))
 }
 
+FDR_table<-function(fit, cList){
+  n<-length(cList)
+  table1<-data.frame(c0=array(NA, n), N_r=array(NA, n), FDR=array(NA, n), FNDR=array(NA, n), FNR=array(NA, n),FPR=array(NA, n))
+  
+  for(i in 1:n){
+    table1[i,]<-round(c(cList[i],unlist(FDR_etc(fit, cList[i]))),3)
+  }
+  
+  return(table1)
+}
+
 #
 #  EM algorithm for Mixture of Multivariate Canonical Fundamental Skew t-distributioins
 #  Package: EMMIX-cskew
